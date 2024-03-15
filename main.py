@@ -1,7 +1,12 @@
 import argparse
 import subprocess
+import os
 
-drmemory_path = "DrMemory/bin64/drmemory.exe"
+if os.name == 'nt':
+    drmemory_path = "DrMemory-Windows-2.6.0/bin64/drmemory.exe"
+else:
+    drmemory_path = "DrMemory-Linux-2.6.0/bin64/drmemory"
+
 default_logs_folder = "logs"
 
 
