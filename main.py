@@ -3,23 +3,24 @@ import subprocess
 import os
 
 if os.name == 'nt':
-    drmemory_path = "DrMemory-Windows-2.6.0/bin64/drmemory.exe"
+    drcachesim_path = "DrMemory-Windows-2.6.0/bin/drmemory -t drcachesim"
 else:
-    drmemory_path = "DrMemory-Linux-2.6.0/bin64/drmemory"
+    drcachesim_path = "DrMemory-Linux-2.6.0/dynamorio/bin64/drrun -t drcachesim"
 
 default_logs_folder = "logs"
 
 
-def invoke_drmemory(args: list):
-    print(subprocess.check_output([drmemory_path] + args))
+def invoke_drcachesim(args: list):
+    print(subprocess.check_output([drcachesim_path] + args))
 
 
 def generate(app_path: str, log_path, app_args: list):
-    invoke_drmemory(["-logdir", log_path, "--", app_path] + app_args)
+    #invoke_drcachesim(["-offline", "--", app_path] + app_args)
+    invoke_drcachesim(["--", app_path] + app_args)
 
 
 def parse(filepath: str):
-    invoke_drmemory()
+    invoke_drcachesim()
 
 
 def create_parser():
@@ -60,5 +61,3 @@ if __name__ == "__main__":
         generate(args.app_path, args.log_path, args.app_args)
     else:
         print(f'invalid operation "{args.operation}"')
-
-    invoke_drmemory([])
