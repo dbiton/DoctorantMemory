@@ -1,22 +1,21 @@
 import argparse
 import subprocess
 import os
+from pathlib import Path
 
 if os.name == 'nt':
-    drcachesim_path = "DrMemory-Windows-2.6.0/bin/drmemory -t drcachesim"
+    drrun_path = "DynamoRIO-Linux-10.0.0/bin/drmemory"
 else:
-    drcachesim_path = "DrMemory-Linux-2.6.0/dynamorio/bin64/drrun -t drcachesim"
-
-default_logs_folder = "logs"
+    drrun_path = "DynamoRIO-Linux-10.0.0/bin64/drrun"
 
 
 def invoke_drcachesim(args: list):
-    print(subprocess.check_output([drcachesim_path] + args))
+    print(subprocess.check_output([drrun_path, "-t", "drcachesim"] + args))
 
 
-def generate(app_path: str, log_path, app_args: list):
-    #invoke_drcachesim(["-offline", "--", app_path] + app_args)
-    invoke_drcachesim(["--", app_path] + app_args)
+def generate(app_path: str, log_path: str, app_args: list):
+    Path(log_path).mkdir(parents=True, exist_ok=True)
+    invoke_drcachesim(["-offline", "-outdir", log_path, "--", app_path] + app_args)
 
 
 def parse(filepath: str):
@@ -30,7 +29,8 @@ def create_parser():
     )
     parser.add_argument(
         "-operation",
-        help="type of operation, can be parse or generate.",
+        choices=["parse", "generate"],
+        help="type of operation to perform."
     )
     parser.add_argument(
         "-app_path",
@@ -39,7 +39,7 @@ def create_parser():
     )
     parser.add_argument(
         "-log_path",
-        default=default_logs_folder,
+        default=".",
         help="relative or absolute to log, which would be parsed or written to when generating.",
     )
     parser.add_argument(
