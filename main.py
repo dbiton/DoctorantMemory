@@ -18,9 +18,8 @@ def generate(app_path: str, log_path: str, app_args: list):
     invoke_drcachesim(["-offline", "-outdir", log_path, "--", app_path] + app_args)
 
 
-def parse(filepath: str):
-    invoke_drcachesim()
-
+def parse(log_path: str):
+    invoke_drcachesim(["-indir", log_path])
 
 def create_parser():
     parser = argparse.ArgumentParser(
