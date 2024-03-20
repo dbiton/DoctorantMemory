@@ -32,8 +32,8 @@ def parse_special(trace_path: str):
     lines = raw_result.splitlines()[3:-2]
     # <record> <instr>: <tid> <record-details> 
     result = []
+    timestamp = "?"
     for line in lines:
-        timestamp = "TODO"
         tokens = line.split() 
         tid = tokens[2]
         record_details_header = tokens[3]
@@ -43,8 +43,12 @@ def parse_special(trace_path: str):
             op = "W"
         elif record_details_header == "read":
             op = "R"
+        elif record_details_header == "<marker:":
+            if tokens[4] == "timestamp":
+                timestamp = tokens[5][:-1]
+            continue
         else:
-            continue # ignore markers for now
+            continue # fix here, check other possible options
         address = tokens[7]
         size = tokens[4] # should check type after?
         assert(tokens[5] == "byte(s)")
@@ -70,7 +74,7 @@ def create_parser():
     parser.add_argument(
         "-parse_output",
         choices=["cache_simulator", "memory_accesses_human", "memory_accesses","cache_line_histogram"],
-        default="cache_sim",
+        default="cache_simulator",
         help="relative or absolute to app, which would be instrumented when using generate.",
         required=False
     )
@@ -91,15 +95,13 @@ def create_parser():
 
 def doctorant_toolname_to_dynamorio_toolname(doctorant_toolname: str):
     toolnames_dict = {
-        "cache_sim" : "",
+        "cache_simulator" : "",
         "memory_accesses_human" : "-simulator_type view",
-        "cacheline_histogram" : "-simulator_type histogram"
+        "cache_line_histogram" : "-simulator_type histogram"
     }
     return toolnames_dict[doctorant_toolname]
 
 if __name__ == "__main__":
-    parse_special("drmemtrace.hello_world.48293.4895.dir")
-
     parser = create_parser()
     args = parser.parse_args()
     if args.operation == "parse":
