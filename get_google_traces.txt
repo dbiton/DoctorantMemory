@@ -1,0 +1,9 @@
+gsutil -m cp -r \
+  "gs://external-traces/CONTRIBUTING.md" \
+  "gs://external-traces/LICENSE" \
+  "gs://external-traces/README" \
+  "gs://external-traces/charlie" \
+  "gs://external-traces/delta" \
+  "gs://external-traces/merced" \
+  "gs://external-traces/whiskey" \
+  .
