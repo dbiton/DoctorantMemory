@@ -1,3 +1,7 @@
+Follow the instructions to install gsutil (ignore gsinit):
+https://cloud.google.com/storage/docs/gsutil_install#deb
+
+Run the following command:
 gsutil -m cp -r \
   "gs://external-traces/CONTRIBUTING.md" \
   "gs://external-traces/LICENSE" \
