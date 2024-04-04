@@ -4,6 +4,11 @@ import os
 from pathlib import Path
 from datetime import datetime, timezone
 
+"""
+    DrCacheSim wrapper for easy usage
+"""
+
+# Tested on windows (nt) and linux.
 if os.name == 'nt':
     drrun_path = "DynamoRIO-Windows-10.0.0/bin64/drrun"
 else:
@@ -11,10 +16,28 @@ else:
 
 
 def timestamp():
-    return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    '''
+    Returns the current timestamp 
+
+        Returns:
+            timestamp (str): the current time as an iso compliant string    
+    '''
+    timetamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return timestamp
 
 
-def invoke_drcachesim(args: list, output_path=timestamp()):
+def invoke_drcachesim(args: list):
+    '''
+    Invokes drcachesim with given arguments and writes 
+    the output to a file, returns the file path.
+
+        Parameters:
+            args (list): the arguments supplied to drcachesim
+
+        Returns:
+            output_path (str): the path to a file containing the invocation results    
+    '''
+    output_path = f"DOCTORANT_MEMORY_{timestamp()}"
     output_file = open(output_path, 'w')
     command = [drrun_path, "-t", "drcachesim"] + args
     subprocess.run(
@@ -25,22 +48,56 @@ def invoke_drcachesim(args: list, output_path=timestamp()):
     return output_path
 
 
-def generate(app_path: str, trace_path: str, app_args: list):
+def generate(app_path: str, app_args: list, trace_path: str):
+    '''
+    Invokes an app with given arguments, writes 
+    the trace output to trace_path and prints it.
+
+        Parameters:
+            app_path (str): the path to the app to be executed
+            app_args (list): the args that would be supplied to the app
+            trace_path (str): the path trace will be written to
+
+        Returns:
+            output_path (str): the path to a file containing the invocation results    
+    '''
     Path(trace_path).mkdir(parents=True, exist_ok=True)
-    result_path = invoke_drcachesim(["-offline", "-outdir", trace_path, "--", app_path] + app_args)
+    result_path = invoke_drcachesim(
+        ["-offline", "-outdir", trace_path, "--", app_path] + app_args)
     with open(result_path, 'r') as f:
         for line in f:
             print(line)
 
 
 def parse(trace_path: str, sim_type: str):
+    '''
+    Parses a trace and processes it with requested tool, 
+    writes the results to a file and prints them. 
+
+        Parameters:
+            sim_type (str): the name of the tool to be used
+            trace_path (str): the path the trace is at
+
+        Returns:
+            result_path (str): the path to a file containing the parse results    
+    '''
     result_path = invoke_drcachesim(["-indir", trace_path]+sim_type.split())
     with open(result_path, 'r') as f:
         for line in f:
             print(line)
+    return result_path
+
 
 def parse_special(trace_path: str):
-    result_path = invoke_drcachesim(["-indir", trace_path, "-simulator_type", "view"])
+    '''
+    Parses a trace and processes it to doctorant's simulator format, 
+    prints the results.
+
+        Parameters:
+            trace_path (str): the path the trace is at
+    '''
+    result_path = invoke_drcachesim(
+        ["-indir", trace_path, "-simulator_type", "view"])
     min_timestamp = float('inf')
     max_timestamp = float('-inf')
     min_address = float('inf')
@@ -61,7 +118,7 @@ def parse_special(trace_path: str):
                 address = int(tokens[7], 0)
                 min_address = min(address, min_address)
                 max_address = max(address, max_address)
-    
+
     cur_timestamp = None
     with open(result_path, 'r') as f:
         header = [next(f) for i in range(3)]
@@ -94,6 +151,13 @@ def parse_special(trace_path: str):
 
 
 def create_parser():
+    '''
+    Configures an ArgumentParser that takes input using a CLI,
+    allowing the user to communicate with DoctorantMemory.
+
+        Returns:
+            parser (argparse.ArgumentParser): the ArgumentParser we configure
+    '''
     parser = argparse.ArgumentParser(
         prog="DoctorantMemory",
         description="DrMemory wrapper"
@@ -108,9 +172,8 @@ def create_parser():
         help="relative or absolute to app, which would be instrumented when using generate.",
         required=False
     )
-    # this is more like analyze, output of parse should be the dude's special format thing
     parser.add_argument(
-        "-parse_output",
+        "-parse_tool_name",
         choices=["cache_simulator", "memory_accesses_human",
                  "memory_accesses", "cache_line_histogram"],
         default="cache_simulator",
@@ -132,26 +195,35 @@ def create_parser():
     return parser
 
 
-def doctorant_toolname_to_dynamorio_toolname(doctorant_toolname: str):
+def translate_toolname(doctorant_toolname: str):
+    '''
+    Converts the names we use for our tools, to the names used by drcachesim.
+        Parameters:
+            doctorant_toolname(str): our name for the tool
+        Returns:
+            drcachesim_toolname (str): drcachesim's name for the tool
+    '''
     toolnames_dict = {
         "cache_simulator": "",
         "memory_accesses_human": "-simulator_type view",
         "cache_line_histogram": "-simulator_type histogram"
     }
-    return toolnames_dict[doctorant_toolname]
+    drcachesim_toolname = toolnames_dict[doctorant_toolname]
+    return drcachesim_toolname
 
 
-if __name__ == "__main__":
+def run():
     parser = create_parser()
     args = parser.parse_args()
     if args.operation == "parse":
-        if args.parse_output == "memory_accesses":
+        if args.parse_tool_name == "memory_accesses":
             parse_special(args.trace_path)
         else:
-            sim_type = doctorant_toolname_to_dynamorio_toolname(
-                args.parse_output)
+            sim_type = translate_toolname(args.parse_tool_name)
             parse(args.trace_path, sim_type)
     elif args.operation == "generate":
-        generate(args.app_path, args.trace_path, args.app_args)
-    else:
-        print(f'invalid operation "{args.operation}"')
+        generate(args.app_path, args.app_args, args.trace_path)
+
+
+if __name__ == "__main__":
+    run()
