@@ -1,6 +1,7 @@
 import argparse
 import subprocess
 import os
+import sys
 from pathlib import Path
 from datetime import datetime, timezone
 
@@ -15,14 +16,14 @@ else:
     drrun_path = "DynamoRIO-Linux-10.0.0/bin64/drrun"
 
 
-def timestamp():
+def get_timestamp():
     '''
     Returns the current timestamp 
 
         Returns:
             timestamp (str): the current time as an iso compliant string    
     '''
-    timetamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     return timestamp
 
 
@@ -37,7 +38,7 @@ def invoke_drcachesim(args: list):
         Returns:
             output_path (str): the path to a file containing the invocation results    
     '''
-    output_path = f"DOCTORANT_MEMORY_{timestamp()}"
+    output_path = f"DOCTORANT_MEMORY_{get_timestamp()}"
     output_file = open(output_path, 'w')
     command = [drrun_path, "-t", "drcachesim"] + args
     subprocess.run(
@@ -223,7 +224,8 @@ def run():
             parse(args.trace_path, sim_type)
     elif args.operation == "generate":
         generate(args.app_path, args.app_args, args.trace_path)
-
+    if len(sys.argv)==1:
+        parser.print_help(sys.stderr)
 
 if __name__ == "__main__":
     run()

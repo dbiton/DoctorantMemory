@@ -48,6 +48,44 @@ You can use the -h flag for help:
 doctorant_memory.py -h
 ```
 
+Below follows a short demonstration of using DoctorantMemory.
+We have placed an executable named "HelloWorld.exe" In doctorant_memory.py's folder.
+The executable prints "Hello World!" and exits. To generate a trace of the exe, we use:
+
+```
+python .\doctorant_memory.py -operation generate -app_path ./HelloWorld.exe 
+```
+
+DoctorantMemory then creates a file named DOCTORANT_MEMORY_TS, with TS being an iso timestamp of the time the trace was created, for example: DOCTORANT_MEMORY_20240410T143504Z. This file contains the output of the executable, which is also printed to the console. The trace information is written to a folder created by drcachesim in the current working directory. The folder is named by drcachesim, for example: drmemtrace.HelloWorld.exe.17564.4748.dir. You can set the path where the folder would be created, with additional folders created if needed:
+
+ ```
+python .\doctorant_memory.py -operation generate -app_path ./HelloWorld.exe -trace_path folder0/folder1/folder2
+```
+
+The folders /folder0, etc. would be created if needed. Inside /folder2 the trace folder would be created.
+
+
+To analyze our trace, we could use the following command:
+
+```
+python .\doctorant_memory.py -operation parse -trace_path folder0\folder1\folder2\drmemtrace.HelloWorld.exe.02752.5578.dir
+```
+
+Your drmemtrace folder would have a different name, so make sure to change it in the command. The default parsing tool shows a cache simulation with hits, misses, etc. You can use other avaliable tools, for example:
+
+```
+python .\doctorant_memory.py -operation parse -trace_path folder0\folder1\folder2\drmemtrace.HelloWorld.exe.02752.5578.dir -parse_tool_name cache_line_histogram
+```
+
+### Documentation
+
+Each function in this project is documented by a docstring. A docstring includes a paragraph describing what the function does, its inputs and outputs. If you prefer not going through the code, you can use pdoc to display the documentation elegantly.
+
+```
+pip install pdoc
+pdoc doctorant_memory.py
+```
+
 ## License
 
 This project is licensed under the BSD License.
