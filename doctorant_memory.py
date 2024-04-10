@@ -49,7 +49,7 @@ def invoke_drcachesim(args: list):
     return output_path
 
 
-def generate(app_path: str, app_args: list, trace_path: str):
+def generate(app_path: str, app_args: list, trace_path: str, delete_logs: bool):
     '''
     Invokes an app with given arguments, writes 
     the trace output to trace_path and prints it.
@@ -63,14 +63,15 @@ def generate(app_path: str, app_args: list, trace_path: str):
             output_path (str): the path to a file containing the invocation results    
     '''
     Path(trace_path).mkdir(parents=True, exist_ok=True)
-    result_path = invoke_drcachesim(
-        ["-offline", "-outdir", trace_path, "--", app_path] + app_args)
+    result_path = invoke_drcachesim(["-offline", "-outdir", trace_path, "--", app_path] + app_args)
     with open(result_path, 'r') as f:
         for line in f:
             print(line)
+    if delete_logs:
+        os.remove(result_path)
 
 
-def parse(trace_path: str, sim_type: str):
+def parse(trace_path: str, sim_type: str, delete_logs: bool):
     '''
     Parses a trace and processes it with requested tool, 
     writes the results to a file and prints them. 
@@ -86,10 +87,11 @@ def parse(trace_path: str, sim_type: str):
     with open(result_path, 'r') as f:
         for line in f:
             print(line)
-    return result_path
+    if delete_logs:
+        os.remove(result_path)
 
 
-def parse_special(trace_path: str):
+def parse_special(trace_path: str, delete_logs: bool):
     '''
     Parses a trace and processes it to doctorant's simulator format, 
     prints the results.
@@ -97,8 +99,7 @@ def parse_special(trace_path: str):
         Parameters:
             trace_path (str): the path the trace is at
     '''
-    result_path = invoke_drcachesim(
-        ["-indir", trace_path, "-simulator_type", "view"])
+    result_path = invoke_drcachesim(["-indir", trace_path, "-simulator_type", "view"])
     min_timestamp = float('inf')
     max_timestamp = float('-inf')
     min_address = float('inf')
@@ -149,6 +150,8 @@ def parse_special(trace_path: str):
             entry[2] = entry[2] - min_address
             output_line = ','.join([str(v) for v in entry])
             print(output_line)
+    if delete_logs:
+        os.remove(result_path)
 
 
 def create_parser():
@@ -187,6 +190,11 @@ def create_parser():
         help="relative or absolute to trace, which would be written to when generating and read from when parsing.",
     )
     parser.add_argument(
+        "-delete_logs",
+        action="store_true",
+        help="delete files containing app output and parse results after printing them to the console"
+    )
+    parser.add_argument(
         "-app_args",
         nargs='*',
         default=[],
@@ -218,12 +226,12 @@ def run():
     args = parser.parse_args()
     if args.operation == "parse":
         if args.parse_tool_name == "memory_accesses":
-            parse_special(args.trace_path)
+            parse_special(args.trace_path, args.delete_logs)
         else:
             sim_type = translate_toolname(args.parse_tool_name)
-            parse(args.trace_path, sim_type)
+            parse(args.trace_path, sim_type, args.delete_logs)
     elif args.operation == "generate":
-        generate(args.app_path, args.app_args, args.trace_path)
+        generate(args.app_path, args.app_args, args.trace_path, args.delete_logs)
     if len(sys.argv)==1:
         parser.print_help(sys.stderr)
 
