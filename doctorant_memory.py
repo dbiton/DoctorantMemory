@@ -91,19 +91,16 @@ def parse(trace_path: str, sim_type: str, delete_logs: bool):
         os.remove(result_path)
 
 
-def parse_special(trace_path: str, delete_logs: bool):
-    '''
-    Parses a trace and processes it to doctorant's simulator format, 
-    prints the results.
-
-        Parameters:
-            trace_path (str): the path the trace is at
-    '''
-    result_path = invoke_drcachesim(["-indir", trace_path, "-simulator_type", "view"])
+def parse_special_collect_statistics(result_path):
     min_timestamp = float('inf')
     max_timestamp = float('-inf')
     min_address = float('inf')
     max_address = float('-inf')
+    bytes_read = 0
+    bytes_write = 0
+    count_reads = 0
+    count_writes = 0
+    count_instructions = 0
     with open(result_path, 'r') as f:
         header = [next(f) for i in range(3)]
         for line in f:
@@ -118,9 +115,36 @@ def parse_special(trace_path: str, delete_logs: bool):
                 continue
             elif tokens[3] in ["ifetch", "write", "read"]:
                 address = int(tokens[7], 0)
+                request_size = int(tokens[4])
                 min_address = min(address, min_address)
                 max_address = max(address, max_address)
+                if tokens[3] == "write":
+                    bytes_write += request_size
+                    count_writes += 1
+                elif tokens[3] == "read":
+                    bytes_read += request_size
+                    count_reads+=1
+                elif tokens[3] == "ifetch":
+                    count_instructions += 1
+    return min_timestamp, max_timestamp,min_address,max_address,bytes_read,bytes_write,count_reads,count_writes,count_instructions
 
+def parse_special(trace_path: str, delete_logs: bool):
+    '''
+    Parses a trace and processes it to doctorant's simulator format, 
+    prints the results.
+
+        Parameters:
+            trace_path (str): the path the trace is at
+    '''
+    result_path = invoke_drcachesim(["-indir", trace_path, "-simulator_type", "view"])
+    min_timestamp, max_timestamp,min_address,max_address,bytes_read,bytes_write,count_reads,count_writes,count_instructions = parse_special_collect_statistics(result_path)
+    print("max address:", max_address-min_address)
+    print("max timestamp:", (max_timestamp - min_timestamp) / 1000)
+    print("bytes read:", bytes_read)
+    print("bytes write:", bytes_write)
+    print("percentage read requests:", count_reads / (count_reads + count_instructions + count_writes))
+    print("percentage write requests:", count_writes / (count_reads + count_instructions + count_writes))
+    print("percentage instruction fetch requests:", count_instructions / (count_reads + count_instructions + count_writes))
     cur_timestamp = None
     with open(result_path, 'r') as f:
         header = [next(f) for i in range(3)]
