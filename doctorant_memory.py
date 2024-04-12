@@ -1,4 +1,5 @@
 import argparse
+import math
 import subprocess
 import os
 import sys
@@ -90,7 +91,64 @@ def parse(trace_path: str, sim_type: str, delete_logs: bool):
     if delete_logs:
         os.remove(result_path)
 
+# wouldn't work in windows
+def sort_file_in_place(path_file, reverse = False):
+    if os.name == 'nt':
+        raise "Implement me!"
+        command = ["sort", path_file, "/O", path_file]
+        if reverse:
+            command += ['/R']
+    else:
+        command = ["sort", "-n", "-o", path_file, path_file]
+        if reverse:
+            command += ['-r']
+    subprocess.run(command)
 
+def count_unique_in_sorted_file_in_place(path_file):
+    tmp_file = f"COUNT_UNIQUE_{get_timestamp()}"
+    if os.name == 'nt':
+        raise Exception("Implement for Windows!")
+    else:
+        command = [f'uniq -c {path_file} > {tmp_file} && mv {tmp_file} {path_file}']
+    subprocess.run(command, shell=True)
+
+# ignore fetch?
+def parse_special_get_hot_addresses(bytes_per_address, max_address, result_path,count_addresses_print):
+    digits_per_address = int(math.log10(max_address))+1
+    path_tmp = f"DOCTORANT_MEMORY_HOT_ADDRESSES_{get_timestamp()}"
+    with open(path_tmp, 'w') as f_tmp:
+        with open(result_path, 'r') as f:
+            header = [next(f) for i in range(3)]
+            for line in f:
+                tokens = line.split()
+                if tokens[0] == 'View':
+                    break
+                elif tokens[3] in ["ifetch", "write", "read"]:
+                    address = int(tokens[7], 0)
+                    request_size = int(tokens[4])
+                    address_first = address // bytes_per_address * bytes_per_address
+                    address_last = (address + request_size) // bytes_per_address * bytes_per_address
+                    for address_curr in range(address_first, address_last+1, bytes_per_address):
+                        # adds leading zero for sorting
+                        f_tmp.write(f"{format(address_curr, f'0{digits_per_address}d')}\n")
+                elif tokens[0] == 'View':
+                    break
+    # sort by address
+    sort_file_in_place(path_tmp)
+    # count accesses to each address
+    count_unique_in_sorted_file_in_place(path_tmp)
+    # sort by number of accesses
+    sort_file_in_place(path_tmp, True)
+    print("hot addresses (accesses | address):")
+    count_addresses_printed = 0
+    with open(path_tmp, 'r') as f_tmp:
+        for line in f_tmp:
+            print(line.strip())
+            count_addresses_printed += 1
+            if count_addresses_printed == count_addresses_print:
+                break
+            
+    
 def parse_special_collect_statistics(result_path):
     min_timestamp = float('inf')
     max_timestamp = float('-inf')
@@ -138,13 +196,14 @@ def parse_special(trace_path: str, delete_logs: bool):
     '''
     result_path = invoke_drcachesim(["-indir", trace_path, "-simulator_type", "view"])
     min_timestamp, max_timestamp,min_address,max_address,bytes_read,bytes_write,count_reads,count_writes,count_instructions = parse_special_collect_statistics(result_path)
+    parse_special_get_hot_addresses(64, max_address, result_path, 10)
     print("max address:", max_address-min_address)
     print("max timestamp:", (max_timestamp - min_timestamp) / 1000)
     print("bytes read:", bytes_read)
     print("bytes write:", bytes_write)
-    print("percentage read requests:", count_reads / (count_reads + count_instructions + count_writes))
-    print("percentage write requests:", count_writes / (count_reads + count_instructions + count_writes))
-    print("percentage instruction fetch requests:", count_instructions / (count_reads + count_instructions + count_writes))
+    print(f"read requests: {round(100*count_reads / (count_reads + count_instructions + count_writes), 2)}%")
+    print(f"write requests: {round(100*count_writes / (count_reads + count_instructions + count_writes), 2)}%")
+    print(f"instruction fetch requests: {round(100*count_instructions / (count_reads + count_instructions + count_writes), 2)}%")
     cur_timestamp = None
     with open(result_path, 'r') as f:
         header = [next(f) for i in range(3)]
