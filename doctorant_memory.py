@@ -113,7 +113,7 @@ def count_unique_in_sorted_file_in_place(path_file):
     subprocess.run(command, shell=True)
 
 # ignore fetch?
-def parse_special_get_hot_addresses(bytes_per_address, max_address, result_path,count_addresses_print):
+def parse_special_get_hot_addresses(bytes_per_address, max_address, result_path,count_addresses_print, delete_logs):
     digits_per_address = int(math.log10(max_address))+1
     path_tmp = f"DOCTORANT_MEMORY_HOT_ADDRESSES_{get_timestamp()}"
     with open(path_tmp, 'w') as f_tmp:
@@ -139,14 +139,16 @@ def parse_special_get_hot_addresses(bytes_per_address, max_address, result_path,
     count_unique_in_sorted_file_in_place(path_tmp)
     # sort by number of accesses
     sort_file_in_place(path_tmp, True)
-    print("hot addresses (accesses | address):")
+    print("# hot addresses (accesses | address):")
     count_addresses_printed = 0
     with open(path_tmp, 'r') as f_tmp:
         for line in f_tmp:
-            print(line.strip())
+            print(f"# {line.strip()}")
             count_addresses_printed += 1
             if count_addresses_printed == count_addresses_print:
                 break
+    if delete_logs:
+        os.remove(path_tmp)
             
     
 def parse_special_collect_statistics(result_path):
@@ -196,14 +198,14 @@ def parse_special(trace_path: str, delete_logs: bool):
     '''
     result_path = invoke_drcachesim(["-indir", trace_path, "-simulator_type", "view"])
     min_timestamp, max_timestamp,min_address,max_address,bytes_read,bytes_write,count_reads,count_writes,count_instructions = parse_special_collect_statistics(result_path)
-    parse_special_get_hot_addresses(64, max_address, result_path, 10)
-    print("max address:", max_address-min_address)
-    print("max timestamp:", (max_timestamp - min_timestamp) / 1000)
-    print("bytes read:", bytes_read)
-    print("bytes write:", bytes_write)
-    print(f"read requests: {round(100*count_reads / (count_reads + count_instructions + count_writes), 2)}%")
-    print(f"write requests: {round(100*count_writes / (count_reads + count_instructions + count_writes), 2)}%")
-    print(f"instruction fetch requests: {round(100*count_instructions / (count_reads + count_instructions + count_writes), 2)}%")
+    parse_special_get_hot_addresses(64, max_address, result_path, 10, delete_logs)
+    print("# max address:", max_address-min_address)
+    print("# max timestamp:", (max_timestamp - min_timestamp) / 1000)
+    print("# bytes read:", bytes_read)
+    print("# bytes write:", bytes_write)
+    print(f"# read requests: {round(100*count_reads / (count_reads + count_instructions + count_writes), 2)}%")
+    print(f"# write requests: {round(100*count_writes / (count_reads + count_instructions + count_writes), 2)}%")
+    print(f"# instruction fetch requests: {round(100*count_instructions / (count_reads + count_instructions + count_writes), 2)}%")
     cur_timestamp = None
     with open(result_path, 'r') as f:
         header = [next(f) for i in range(3)]
@@ -273,9 +275,9 @@ def create_parser():
         help="relative or absolute to trace, which would be written to when generating and read from when parsing.",
     )
     parser.add_argument(
-        "-delete_logs",
+        "-keep_logs",
         action="store_true",
-        help="delete files containing app output and parse results after printing them to the console"
+        help="keep files containing app output and parse results after printing them to the console"
     )
     parser.add_argument(
         "-app_args",
@@ -309,12 +311,12 @@ def run():
     args = parser.parse_args()
     if args.operation == "parse":
         if args.parse_tool_name == "memory_accesses":
-            parse_special(args.trace_path, args.delete_logs)
+            parse_special(args.trace_path, not args.keep_logs)
         else:
             sim_type = translate_toolname(args.parse_tool_name)
-            parse(args.trace_path, sim_type, args.delete_logs)
+            parse(args.trace_path, sim_type, not args.keep_logs)
     elif args.operation == "generate":
-        generate(args.app_path, args.app_args, args.trace_path, args.delete_logs)
+        generate(args.app_path, args.app_args, args.trace_path, not args.keep_logs)
     if len(sys.argv)==1:
         parser.print_help(sys.stderr)
 
