@@ -113,42 +113,45 @@ def count_unique_in_sorted_file_in_place(path_file):
     subprocess.run(command, shell=True)
 
 # ignore fetch?
-def parse_special_get_hot_addresses(bytes_per_address, max_address, result_path,count_addresses_print, delete_logs):
+def parse_special_get_hot_addresses(bytes_per_address, max_address, result_path,count_addresses_print, delete_logs, ignore_instruction_fetch):
     digits_per_address = int(math.log10(max_address))+1
-    path_tmp = f"DOCTORANT_MEMORY_HOT_ADDRESSES_{get_timestamp()}"
-    with open(path_tmp, 'w') as f_tmp:
-        with open(result_path, 'r') as f:
-            header = [next(f) for i in range(3)]
-            for line in f:
+    path_hot_addr = f"DOCTORANT_MEMORY_HOT_ADDRESSES_{get_timestamp()}"
+    relevant_access_types = ["write", "read"]
+    if not ignore_instruction_fetch:
+    	relevant_access_types.append("ifetch")
+    with open(path_hot_addr, 'w') as f_hot_addr:
+        with open(result_path, 'r') as f_mem_access:
+            header = [next(f_mem_access) for i in range(3)]
+            for line in f_mem_access:
                 tokens = line.split()
                 if tokens[0] == 'View':
                     break
-                elif tokens[3] in ["ifetch", "write", "read"]:
+                elif tokens[3] in relevant_access_types:
                     address = int(tokens[7], 0)
                     request_size = int(tokens[4])
                     address_first = address // bytes_per_address * bytes_per_address
                     address_last = (address + request_size) // bytes_per_address * bytes_per_address
                     for address_curr in range(address_first, address_last+1, bytes_per_address):
                         # adds leading zero for sorting
-                        f_tmp.write(f"{format(address_curr, f'0{digits_per_address}d')}\n")
+                        f_hot_addr.write(f"{format(address_curr, f'0{digits_per_address}d')}\n")
                 elif tokens[0] == 'View':
                     break
     # sort by address
-    sort_file_in_place(path_tmp)
+    sort_file_in_place(path_hot_addr)
     # count accesses to each address
-    count_unique_in_sorted_file_in_place(path_tmp)
+    count_unique_in_sorted_file_in_place(path_hot_addr)
     # sort by number of accesses
-    sort_file_in_place(path_tmp, True)
+    sort_file_in_place(path_hot_addr, True)
     print("# hot addresses (accesses | address):")
     count_addresses_printed = 0
-    with open(path_tmp, 'r') as f_tmp:
-        for line in f_tmp:
+    with open(path_hot_addr, 'r') as f_hot_addr:
+        for line in f_hot_addr:
             print(f"# {line.strip()}")
             count_addresses_printed += 1
             if count_addresses_printed == count_addresses_print:
                 break
     if delete_logs:
-        os.remove(path_tmp)
+        os.remove(path_hot_addr)
             
     
 def parse_special_collect_statistics(result_path):
@@ -188,7 +191,7 @@ def parse_special_collect_statistics(result_path):
                     count_instructions += 1
     return min_timestamp, max_timestamp,min_address,max_address,bytes_read,bytes_write,count_reads,count_writes,count_instructions
 
-def parse_special(trace_path: str, delete_logs: bool):
+def parse_special(trace_path: str, delete_logs: bool, ignore_instruction_fetch: bool):
     '''
     Parses a trace and processes it to doctorant's simulator format, 
     prints the results.
@@ -198,14 +201,17 @@ def parse_special(trace_path: str, delete_logs: bool):
     '''
     result_path = invoke_drcachesim(["-indir", trace_path, "-simulator_type", "view"])
     min_timestamp, max_timestamp,min_address,max_address,bytes_read,bytes_write,count_reads,count_writes,count_instructions = parse_special_collect_statistics(result_path)
-    parse_special_get_hot_addresses(64, max_address, result_path, 10, delete_logs)
+    parse_special_get_hot_addresses(64, max_address, result_path, 10, delete_logs, ignore_instruction_fetch)
+    if ignore_instruction_fetch:
+    	count_instructions = 0
     print("# max address:", max_address-min_address)
     print("# max timestamp:", (max_timestamp - min_timestamp) / 1000)
     print("# bytes read:", bytes_read)
     print("# bytes write:", bytes_write)
     print(f"# read requests: {round(100*count_reads / (count_reads + count_instructions + count_writes), 2)}%")
     print(f"# write requests: {round(100*count_writes / (count_reads + count_instructions + count_writes), 2)}%")
-    print(f"# instruction fetch requests: {round(100*count_instructions / (count_reads + count_instructions + count_writes), 2)}%")
+    if not ignore_instruction_fetch:
+    	print(f"# instruction fetch requests: {round(100*count_instructions / (count_reads + count_instructions + count_writes), 2)}%")
     cur_timestamp = None
     with open(result_path, 'r') as f:
         header = [next(f) for i in range(3)]
@@ -216,6 +222,8 @@ def parse_special(trace_path: str, delete_logs: bool):
             tid = tokens[2]
             record_details_header = tokens[3]
             if record_details_header == "ifetch":
+                if ignore_instruction_fetch:
+                    continue
                 op = "I"  # instruction
             elif record_details_header == "write":
                 op = "W"
@@ -280,6 +288,11 @@ def create_parser():
         help="keep files containing app output and parse results after printing them to the console"
     )
     parser.add_argument(
+        "-parse_ignore_inst",
+        action="store_true",
+        help="ignore memory accesses caused by fetching instructions in memory_accesses's parse tool"
+    )
+    parser.add_argument(
         "-app_args",
         nargs='*',
         default=[],
@@ -311,7 +324,7 @@ def run():
     args = parser.parse_args()
     if args.operation == "parse":
         if args.parse_tool_name == "memory_accesses":
-            parse_special(args.trace_path, not args.keep_logs)
+            parse_special(args.trace_path, not args.keep_logs, args.parse_ignore_inst)
         else:
             sim_type = translate_toolname(args.parse_tool_name)
             parse(args.trace_path, sim_type, not args.keep_logs)
