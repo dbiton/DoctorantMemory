@@ -1,11 +1,16 @@
 # DoctorantMemory
 
-DocctorantMemory is a wrapper of DynamoRIO tools, which was tailor-made for our use case with simplicity in mind.
-It instruments applications to generate memory access traces. Different tools are available to analyze the traces. 
+DocctorantMemory is a tool used for instrumenting memory accesses, which was tailor-made for our use case with simplicity in mind.
+It instruments applications and generate memory access traces, which can be analyzed with multiple tools. 
 
 ## Description
 
-This project include a python CLI for communicating with DynamoRIO's drcachesim, which is a tool that can be used to extract the memory accesses of an application.
+DynamoRIO is an instrumentation framework for the development of program analysis tools. 
+DrCacheSim is a tool in the DynamoRIO framework that collects instruction and memory access traces using its DrMemTrace component.
+It feeds the traces to either an online or offline tool for analysis.
+This project includes a python CLI for communicating with DynamoRIO's DrCacheSim.
+
+Read more about DrCacheSim here: https://dynamorio.org/page_drcachesim.html.
 
 ### Dependencies
 
@@ -56,13 +61,13 @@ The executable prints "Hello World!" and exits. To generate a trace of the exe, 
 python .\doctorant_memory.py -operation generate -app_path ./HelloWorld.exe 
 ```
 
-DoctorantMemory then creates a file named DOCTORANT_MEMORY_TS, with TS being an iso timestamp of the time the trace was created, for example: DOCTORANT_MEMORY_20240410T143504Z. This file contains the output of the executable, which is also printed to the console. The trace information is written to a folder created by drcachesim in the current working directory. The folder is named by drcachesim, for example: drmemtrace.HelloWorld.exe.17564.4748.dir. You can set the path where the folder would be created, with additional folders created if needed:
+DoctorantMemory then creates a file named DOCTORANT_MEMORY_TS, with TS being an iso timestamp of the time the trace was created, for example: DOCTORANT_MEMORY_20240410T143504Z. This file contains the output of the executable, which is also printed to the console. The trace information is written to a folder created by drcachesim in the current working directory. The folder is named by drcachesim, for example: drmemtrace.HelloWorld.exe.17564.4748.dir. You can set the path where the folder would be created, with missing folders created if needed:
 
  ```
-python .\doctorant_memory.py -operation generate -app_path ./HelloWorld.exe -trace_path folder0/folder1/folder2
+python .\doctorant_memory.py -operation generate -app_path ./HelloWorld.exe -trace_path traces
 ```
 
-The folders /folder0, etc. would be created if needed. Inside /folder2 the trace folder would be created.
+The folder traces would be created if it does not exist.
 
 
 To analyze our trace, we could use the following command:
