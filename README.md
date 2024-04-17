@@ -1,6 +1,6 @@
 # DoctorantMemory
 
-DocctorantMemory is a tool used for instrumenting memory accesses, which was tailor-made for our use case with simplicity in mind.
+DoctorantMemory is a tool used for instrumenting memory accesses, which was tailor-made for our use case with simplicity in mind.
 It instruments applications and generate memory access traces, which can be analyzed with multiple tools. 
 
 ## Description
