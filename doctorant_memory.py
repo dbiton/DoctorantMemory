@@ -113,7 +113,6 @@ def count_unique_in_sorted_file_in_place(path_file):
     subprocess.run(command, shell=True)
 
 
-# ignore fetch?
 def parse_special_get_hot_addresses(
     bytes_per_address,
     max_address,
@@ -218,7 +217,13 @@ def parse_special_collect_statistics(result_path):
     )
 
 
-def parse_special(trace_path: str, delete_logs: bool, ignore_instruction_fetch: bool):
+def parse_special(
+    trace_path: str,
+    delete_logs: bool,
+    ignore_instruction_fetch: bool,
+    hot_addresses_count: int,
+    cacheline_size_bytes: int,
+):
     """
     Parses a trace and processes it to doctorant's simulator format,
     prints the results.
@@ -238,9 +243,16 @@ def parse_special(trace_path: str, delete_logs: bool, ignore_instruction_fetch: 
         count_writes,
         count_instructions,
     ) = parse_special_collect_statistics(result_path)
+
     parse_special_get_hot_addresses(
-        64, max_address, result_path, 10, delete_logs, ignore_instruction_fetch
+        cacheline_size_bytes,
+        max_address,
+        result_path,
+        hot_addresses_count,
+        delete_logs,
+        ignore_instruction_fetch,
     )
+
     if ignore_instruction_fetch:
         count_instructions = 0
     print("# max address:", max_address - min_address)
@@ -347,6 +359,18 @@ def create_parser():
         help="arguments passed to your app when using generate.",
         required=False,
     )
+    parser.add_argument(
+        "-parse_hot_addresses_count",
+        default=10,
+        help="how many hot addresses to include in the header of the memory_accesses parse tool.",
+        type=int,
+    )
+    parser.add_argument(
+        "-parse_cacheline_size",
+        default=16,
+        help="the cacheline size used in memory_accesses in bytes.",
+        type=int,
+    )
     return parser
 
 
@@ -372,7 +396,13 @@ def run():
     args = parser.parse_args()
     if args.operation == "parse":
         if args.parse_tool_name == "memory_accesses":
-            parse_special(args.trace_path, not args.keep_logs, args.parse_ignore_inst)
+            parse_special(
+                args.trace_path,
+                not args.keep_logs,
+                args.parse_ignore_inst,
+                args.parse_hot_addresses_count,
+                args.parse_cacheline_size,
+            )
         else:
             sim_type = translate_toolname(args.parse_tool_name)
             parse(args.trace_path, sim_type, not args.keep_logs)
