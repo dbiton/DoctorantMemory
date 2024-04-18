@@ -11,48 +11,44 @@ from datetime import datetime, timezone
 """
 
 # Tested on windows (nt) and linux.
-if os.name == 'nt':
+if os.name == "nt":
     drrun_path = "DynamoRIO-Windows-10.0.0/bin64/drrun"
 else:
     drrun_path = "DynamoRIO-Linux-10.0.0/bin64/drrun"
 
 
 def get_timestamp():
-    '''
-    Returns the current timestamp 
+    """
+    Returns the current timestamp
 
         Returns:
-            timestamp (str): the current time as an iso compliant string    
-    '''
+            timestamp (str): the current time as an iso compliant string
+    """
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     return timestamp
 
 
 def invoke_drcachesim(args: list):
-    '''
-    Invokes drcachesim with given arguments and writes 
+    """
+    Invokes drcachesim with given arguments and writes
     the output to a file, returns the file path.
 
         Parameters:
             args (list): the arguments supplied to drcachesim
 
         Returns:
-            output_path (str): the path to a file containing the invocation results    
-    '''
+            output_path (str): the path to a file containing the invocation results
+    """
     output_path = f"DOCTORANT_MEMORY_{get_timestamp()}"
-    output_file = open(output_path, 'w')
+    output_file = open(output_path, "w")
     command = [drrun_path, "-t", "drcachesim"] + args
-    subprocess.run(
-        command,
-        stdout=output_file,
-        stderr=output_file
-    )
+    subprocess.run(command, stdout=output_file, stderr=output_file)
     return output_path
 
 
 def generate(app_path: str, app_args: list, trace_path: str, delete_logs: bool):
-    '''
-    Invokes an app with given arguments, writes 
+    """
+    Invokes an app with given arguments, writes
     the trace output to trace_path and prints it.
 
         Parameters:
@@ -61,11 +57,13 @@ def generate(app_path: str, app_args: list, trace_path: str, delete_logs: bool):
             trace_path (str): the path trace will be written to
 
         Returns:
-            output_path (str): the path to a file containing the invocation results    
-    '''
+            output_path (str): the path to a file containing the invocation results
+    """
     Path(trace_path).mkdir(parents=True, exist_ok=True)
-    result_path = invoke_drcachesim(["-offline", "-outdir", trace_path, "--", app_path] + app_args)
-    with open(result_path, 'r') as f:
+    result_path = invoke_drcachesim(
+        ["-offline", "-outdir", trace_path, "--", app_path] + app_args
+    )
+    with open(result_path, "r") as f:
         for line in f:
             print(line)
     if delete_logs:
@@ -73,68 +71,86 @@ def generate(app_path: str, app_args: list, trace_path: str, delete_logs: bool):
 
 
 def parse(trace_path: str, sim_type: str, delete_logs: bool):
-    '''
-    Parses a trace and processes it with requested tool, 
-    writes the results to a file and prints them. 
+    """
+    Parses a trace and processes it with requested tool,
+    writes the results to a file and prints them.
 
         Parameters:
             sim_type (str): the name of the tool to be used
             trace_path (str): the path the trace is at
 
         Returns:
-            result_path (str): the path to a file containing the parse results    
-    '''
-    result_path = invoke_drcachesim(["-indir", trace_path]+sim_type.split())
-    with open(result_path, 'r') as f:
+            result_path (str): the path to a file containing the parse results
+    """
+    result_path = invoke_drcachesim(["-indir", trace_path] + sim_type.split())
+    with open(result_path, "r") as f:
         for line in f:
             print(line)
     if delete_logs:
         os.remove(result_path)
 
+
 # wouldn't work in windows
-def sort_file_in_place(path_file, reverse = False):
-    if os.name == 'nt':
+def sort_file_in_place(path_file, reverse=False):
+    if os.name == "nt":
         raise "Implement me!"
         command = ["sort", path_file, "/O", path_file]
         if reverse:
-            command += ['/R']
+            command += ["/R"]
     else:
         command = ["sort", "-n", "-o", path_file, path_file]
         if reverse:
-            command += ['-r']
+            command += ["-r"]
     subprocess.run(command)
+
 
 def count_unique_in_sorted_file_in_place(path_file):
     tmp_file = f"COUNT_UNIQUE_{get_timestamp()}"
-    if os.name == 'nt':
+    if os.name == "nt":
         raise Exception("Implement for Windows!")
     else:
-        command = [f'uniq -c {path_file} > {tmp_file} && mv {tmp_file} {path_file}']
+        command = [f"uniq -c {path_file} > {tmp_file} && mv {tmp_file} {path_file}"]
     subprocess.run(command, shell=True)
 
+
 # ignore fetch?
-def parse_special_get_hot_addresses(bytes_per_address, max_address, result_path,count_addresses_print, delete_logs, ignore_instruction_fetch):
-    digits_per_address = int(math.log10(max_address))+1
+def parse_special_get_hot_addresses(
+    bytes_per_address,
+    max_address,
+    result_path,
+    count_addresses_print,
+    delete_logs,
+    ignore_instruction_fetch,
+):
+    digits_per_address = int(math.log10(max_address)) + 1
     path_hot_addr = f"DOCTORANT_MEMORY_HOT_ADDRESSES_{get_timestamp()}"
     relevant_access_types = ["write", "read"]
     if not ignore_instruction_fetch:
-    	relevant_access_types.append("ifetch")
-    with open(path_hot_addr, 'w') as f_hot_addr:
-        with open(result_path, 'r') as f_mem_access:
+        relevant_access_types.append("ifetch")
+    with open(path_hot_addr, "w") as f_hot_addr:
+        with open(result_path, "r") as f_mem_access:
             header = [next(f_mem_access) for i in range(3)]
             for line in f_mem_access:
                 tokens = line.split()
-                if tokens[0] == 'View':
+                if tokens[0] == "View":
                     break
                 elif tokens[3] in relevant_access_types:
                     address = int(tokens[7], 0)
                     request_size = int(tokens[4])
                     address_first = address // bytes_per_address * bytes_per_address
-                    address_last = (address + request_size) // bytes_per_address * bytes_per_address
-                    for address_curr in range(address_first, address_last+1, bytes_per_address):
+                    address_last = (
+                        (address + request_size)
+                        // bytes_per_address
+                        * bytes_per_address
+                    )
+                    for address_curr in range(
+                        address_first, address_last + 1, bytes_per_address
+                    ):
                         # adds leading zero for sorting
-                        f_hot_addr.write(f"{format(address_curr, f'0{digits_per_address}d')}\n")
-                elif tokens[0] == 'View':
+                        f_hot_addr.write(
+                            f"{format(address_curr, f'0{digits_per_address}d')}\n"
+                        )
+                elif tokens[0] == "View":
                     break
     # sort by address
     sort_file_in_place(path_hot_addr)
@@ -144,7 +160,7 @@ def parse_special_get_hot_addresses(bytes_per_address, max_address, result_path,
     sort_file_in_place(path_hot_addr, True)
     print("# hot addresses (accesses | address):")
     count_addresses_printed = 0
-    with open(path_hot_addr, 'r') as f_hot_addr:
+    with open(path_hot_addr, "r") as f_hot_addr:
         for line in f_hot_addr:
             print(f"# {line.strip()}")
             count_addresses_printed += 1
@@ -152,23 +168,23 @@ def parse_special_get_hot_addresses(bytes_per_address, max_address, result_path,
                 break
     if delete_logs:
         os.remove(path_hot_addr)
-            
-    
+
+
 def parse_special_collect_statistics(result_path):
-    min_timestamp = float('inf')
-    max_timestamp = float('-inf')
-    min_address = float('inf')
-    max_address = float('-inf')
+    min_timestamp = float("inf")
+    max_timestamp = float("-inf")
+    min_address = float("inf")
+    max_address = float("-inf")
     bytes_read = 0
     bytes_write = 0
     count_reads = 0
     count_writes = 0
     count_instructions = 0
-    with open(result_path, 'r') as f:
+    with open(result_path, "r") as f:
         header = [next(f) for i in range(3)]
         for line in f:
             tokens = line.split()
-            if tokens[0] == 'View':
+            if tokens[0] == "View":
                 break
             elif tokens[3] == "<marker:":
                 if tokens[4] == "timestamp":
@@ -186,38 +202,67 @@ def parse_special_collect_statistics(result_path):
                     count_writes += 1
                 elif tokens[3] == "read":
                     bytes_read += request_size
-                    count_reads+=1
+                    count_reads += 1
                 elif tokens[3] == "ifetch":
                     count_instructions += 1
-    return min_timestamp, max_timestamp,min_address,max_address,bytes_read,bytes_write,count_reads,count_writes,count_instructions
+    return (
+        min_timestamp,
+        max_timestamp,
+        min_address,
+        max_address,
+        bytes_read,
+        bytes_write,
+        count_reads,
+        count_writes,
+        count_instructions,
+    )
+
 
 def parse_special(trace_path: str, delete_logs: bool, ignore_instruction_fetch: bool):
-    '''
-    Parses a trace and processes it to doctorant's simulator format, 
+    """
+    Parses a trace and processes it to doctorant's simulator format,
     prints the results.
 
         Parameters:
             trace_path (str): the path the trace is at
-    '''
+    """
     result_path = invoke_drcachesim(["-indir", trace_path, "-simulator_type", "view"])
-    min_timestamp, max_timestamp,min_address,max_address,bytes_read,bytes_write,count_reads,count_writes,count_instructions = parse_special_collect_statistics(result_path)
-    parse_special_get_hot_addresses(64, max_address, result_path, 10, delete_logs, ignore_instruction_fetch)
+    (
+        min_timestamp,
+        max_timestamp,
+        min_address,
+        max_address,
+        bytes_read,
+        bytes_write,
+        count_reads,
+        count_writes,
+        count_instructions,
+    ) = parse_special_collect_statistics(result_path)
+    parse_special_get_hot_addresses(
+        64, max_address, result_path, 10, delete_logs, ignore_instruction_fetch
+    )
     if ignore_instruction_fetch:
-    	count_instructions = 0
-    print("# max address:", max_address-min_address)
+        count_instructions = 0
+    print("# max address:", max_address - min_address)
     print("# max timestamp:", (max_timestamp - min_timestamp) / 1000)
     print("# bytes read:", bytes_read)
     print("# bytes write:", bytes_write)
-    print(f"# read requests: {round(100*count_reads / (count_reads + count_instructions + count_writes), 2)}%")
-    print(f"# write requests: {round(100*count_writes / (count_reads + count_instructions + count_writes), 2)}%")
+    print(
+        f"# read requests: {round(100*count_reads / (count_reads + count_instructions + count_writes), 2)}%"
+    )
+    print(
+        f"# write requests: {round(100*count_writes / (count_reads + count_instructions + count_writes), 2)}%"
+    )
     if not ignore_instruction_fetch:
-    	print(f"# instruction fetch requests: {round(100*count_instructions / (count_reads + count_instructions + count_writes), 2)}%")
+        print(
+            f"# instruction fetch requests: {round(100*count_instructions / (count_reads + count_instructions + count_writes), 2)}%"
+        )
     cur_timestamp = None
-    with open(result_path, 'r') as f:
+    with open(result_path, "r") as f:
         header = [next(f) for i in range(3)]
         for line in f:
             tokens = line.split()
-            if tokens[0] == 'View':
+            if tokens[0] == "View":
                 break
             tid = tokens[2]
             record_details_header = tokens[3]
@@ -237,45 +282,48 @@ def parse_special(trace_path: str, delete_logs: bool, ignore_instruction_fetch: 
                 continue  # fix here, check other possible options
             curr_address = int(tokens[7], 0)
             size = tokens[4]  # should check type after?
-            assert (tokens[5] == "byte(s)")
+            assert tokens[5] == "byte(s)"
             entry = [cur_timestamp, tid, curr_address, size, op]
             entry[0] = (entry[0] - min_timestamp) / 1000
             entry[2] = entry[2] - min_address
-            output_line = ','.join([str(v) for v in entry])
+            output_line = ",".join([str(v) for v in entry])
             print(output_line)
     if delete_logs:
         os.remove(result_path)
 
 
 def create_parser():
-    '''
+    """
     Configures an ArgumentParser that takes input using a CLI,
     allowing the user to communicate with DoctorantMemory.
 
         Returns:
             parser (argparse.ArgumentParser): the ArgumentParser we configure
-    '''
+    """
     parser = argparse.ArgumentParser(
-        prog="DoctorantMemory",
-        description="DrMemory wrapper"
+        prog="DoctorantMemory", description="DrMemory wrapper"
     )
     parser.add_argument(
         "-operation",
         choices=["parse", "generate"],
-        help="type of operation to perform."
+        help="type of operation to perform.",
     )
     parser.add_argument(
         "-app_path",
         help="relative or absolute to app, which would be instrumented when using generate.",
-        required=False
+        required=False,
     )
     parser.add_argument(
         "-parse_tool_name",
-        choices=["cache_simulator", "memory_accesses_human",
-                 "memory_accesses", "cache_line_histogram"],
+        choices=[
+            "cache_simulator",
+            "memory_accesses_human",
+            "memory_accesses",
+            "cache_line_histogram",
+        ],
         default="cache_simulator",
         help="relative or absolute to app, which would be instrumented when using generate.",
-        required=False
+        required=False,
     )
     parser.add_argument(
         "-trace_path",
@@ -285,35 +333,35 @@ def create_parser():
     parser.add_argument(
         "-keep_logs",
         action="store_true",
-        help="keep files containing app output and parse results after printing them to the console"
+        help="keep files containing app output and parse results after printing them to the console",
     )
     parser.add_argument(
         "-parse_ignore_inst",
         action="store_true",
-        help="ignore memory accesses caused by fetching instructions in memory_accesses's parse tool"
+        help="ignore memory accesses caused by fetching instructions in memory_accesses's parse tool",
     )
     parser.add_argument(
         "-app_args",
-        nargs='*',
+        nargs="*",
         default=[],
         help="arguments passed to your app when using generate.",
-        required=False
+        required=False,
     )
     return parser
 
 
 def translate_toolname(doctorant_toolname: str):
-    '''
+    """
     Converts the names we use for our tools, to the names used by drcachesim.
         Parameters:
             doctorant_toolname(str): our name for the tool
         Returns:
             drcachesim_toolname (str): drcachesim's name for the tool
-    '''
+    """
     toolnames_dict = {
         "cache_simulator": "",
         "memory_accesses_human": "-simulator_type view",
-        "cache_line_histogram": "-simulator_type histogram"
+        "cache_line_histogram": "-simulator_type histogram",
     }
     drcachesim_toolname = toolnames_dict[doctorant_toolname]
     return drcachesim_toolname
@@ -330,8 +378,9 @@ def run():
             parse(args.trace_path, sim_type, not args.keep_logs)
     elif args.operation == "generate":
         generate(args.app_path, args.app_args, args.trace_path, not args.keep_logs)
-    if len(sys.argv)==1:
+    if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
+
 
 if __name__ == "__main__":
     run()
