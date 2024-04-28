@@ -117,7 +117,7 @@ def parse_special_get_hot_addresses(
     bytes_per_address,
     max_address,
     result_path,
-    count_addresses_print,
+    max_count_addresses_print,
     delete_logs,
     ignore_instruction_fetch,
 ):
@@ -157,13 +157,15 @@ def parse_special_get_hot_addresses(
     count_unique_in_sorted_file_in_place(path_hot_addr)
     # sort by number of accesses
     sort_file_in_place(path_hot_addr, True)
+    print(f"# cacheline size: {bytes_per_address}")
+    print(f"# hot addresses count: {max_count_addresses_print}")
     print("# hot addresses (accesses | address):")
     count_addresses_printed = 0
     with open(path_hot_addr, "r") as f_hot_addr:
         for line in f_hot_addr:
             print(f"# {line.strip()}")
             count_addresses_printed += 1
-            if count_addresses_printed == count_addresses_print:
+            if count_addresses_printed >= max_count_addresses_print:
                 break
     if delete_logs:
         os.remove(path_hot_addr)
