@@ -73,13 +73,13 @@ The folder traces would be created if it does not exist.
 To analyze our trace, we could use the following command:
 
 ```
-python .\doctorant_memory.py -operation parse -trace_path folder0\folder1\folder2\drmemtrace.HelloWorld.exe.02752.5578.dir
+python .\doctorant_memory.py -operation parse -trace_path traces\drmemtrace.HelloWorld.exe.02752.5578.dir
 ```
 
 Your drmemtrace folder would have a different name, so make sure to change it in the command. The default parsing tool shows a cache simulation with hits, misses, etc. You can use other avaliable tools, for example:
 
 ```
-python .\doctorant_memory.py -operation parse -trace_path folder0\folder1\folder2\drmemtrace.HelloWorld.exe.02752.5578.dir -parse_tool_name cache_line_histogram
+python .\doctorant_memory.py -operation parse -trace_path traces\drmemtrace.HelloWorld.exe.02752.5578.dir -parse_tool_name cache_line_histogram
 ```
 
 ### Documentation

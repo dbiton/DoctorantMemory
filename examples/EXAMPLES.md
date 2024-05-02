@@ -1,3 +1,7 @@
+# Examples
+
+![plot](./Figure.png)
+
 ## Getting a Trace
 
 If you are interested in generating your own trace, we have included an example "Hello World!" application in C. 
