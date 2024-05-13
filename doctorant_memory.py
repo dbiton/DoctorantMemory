@@ -65,7 +65,7 @@ def generate(app_path: str, app_args: list, trace_path: str, delete_logs: bool):
     )
     with open(result_path, "r") as f:
         for line in f:
-            print(line)
+            print(line.strip())
     if delete_logs:
         os.remove(result_path)
 
@@ -85,7 +85,7 @@ def parse(trace_path: str, sim_type: str, delete_logs: bool):
     result_path = invoke_drcachesim(["-indir", trace_path] + sim_type.split())
     with open(result_path, "r") as f:
         for line in f:
-            print(line)
+            print(line.strip())
     if delete_logs:
         os.remove(result_path)
 
@@ -331,7 +331,7 @@ def create_parser():
         "-parse_tool_name",
         choices=[
             "cache_simulator",
-            "memory_accesses_human",
+            "memory_accesses_drcachesim",
             "memory_accesses",
             "cache_line_histogram",
         ],
@@ -386,7 +386,7 @@ def translate_toolname(doctorant_toolname: str):
     """
     toolnames_dict = {
         "cache_simulator": "",
-        "memory_accesses_human": "-simulator_type view",
+        "memory_accesses_drcachesim": "-simulator_type view",
         "cache_line_histogram": "-simulator_type histogram",
     }
     drcachesim_toolname = toolnames_dict[doctorant_toolname]
