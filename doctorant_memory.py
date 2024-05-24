@@ -114,12 +114,13 @@ def count_unique_in_sorted_file_in_place(path_file):
 
 
 def parse_special_get_hot_addresses(
-    bytes_per_address,
-    max_address,
-    result_path,
-    max_count_addresses_print,
-    delete_logs,
-    ignore_instruction_fetch,
+        bytes_per_address,
+        max_address,
+        result_path,
+        max_count_addresses_print,
+        delete_logs,
+        ignore_instruction_fetch,
+        output_path
 ):
     digits_per_address = int(math.log10(max_address)) + 1
     path_hot_addr = f"DOCTORANT_MEMORY_HOT_ADDRESSES_{get_timestamp()}"
@@ -138,12 +139,12 @@ def parse_special_get_hot_addresses(
                     request_size = int(tokens[4])
                     address_first = address // bytes_per_address * bytes_per_address
                     address_last = (
-                        (address + request_size)
-                        // bytes_per_address
-                        * bytes_per_address
+                            (address + request_size)
+                            // bytes_per_address
+                            * bytes_per_address
                     )
                     for address_curr in range(
-                        address_first, address_last + 1, bytes_per_address
+                            address_first, address_last + 1, bytes_per_address
                     ):
                         # adds leading zero for sorting
                         f_hot_addr.write(
@@ -157,16 +158,17 @@ def parse_special_get_hot_addresses(
     count_unique_in_sorted_file_in_place(path_hot_addr)
     # sort by number of accesses
     sort_file_in_place(path_hot_addr, True)
-    print(f"# cacheline size: {bytes_per_address}")
-    print(f"# hot addresses count: {max_count_addresses_print}")
-    print("# hot addresses (accesses | address):")
-    count_addresses_printed = 0
-    with open(path_hot_addr, "r") as f_hot_addr:
-        for line in f_hot_addr:
-            print(f"# {line.strip()}")
-            count_addresses_printed += 1
-            if count_addresses_printed >= max_count_addresses_print:
-                break
+    with open(output_path, 'a') as file_out:
+        print(f"# cacheline size: {bytes_per_address}", file=file_out)
+        print(f"# hot addresses count: {max_count_addresses_print}", file=file_out)
+        print("# hot addresses (accesses | address):", file=file_out)
+        count_addresses_printed = 0
+        with open(path_hot_addr, "r") as f_hot_addr:
+            for line in f_hot_addr:
+                print(f"# {line.strip()}", file=file_out)
+                count_addresses_printed += 1
+                if count_addresses_printed >= max_count_addresses_print:
+                    break
     if delete_logs:
         os.remove(path_hot_addr)
 
@@ -220,11 +222,11 @@ def parse_special_collect_statistics(result_path):
 
 
 def parse_special(
-    trace_path: str,
-    delete_logs: bool,
-    ignore_instruction_fetch: bool,
-    hot_addresses_count: int,
-    cacheline_size_bytes: int,
+        trace_path: str,
+        delete_logs: bool,
+        ignore_instruction_fetch: bool,
+        hot_addresses_count: int,
+        cacheline_size_bytes: int,
 ):
     """
     Parses a trace and processes it to doctorant's simulator format,
@@ -233,6 +235,8 @@ def parse_special(
         Parameters:
             trace_path (str): the path the trace is at
     """
+    temporary_path = f"get_timestamp()"
+
     result_path = invoke_drcachesim(["-indir", trace_path, "-simulator_type", "view"])
     (
         min_timestamp,
@@ -253,24 +257,29 @@ def parse_special(
         hot_addresses_count,
         delete_logs,
         ignore_instruction_fetch,
+        temporary_path
     )
 
     if ignore_instruction_fetch:
         count_instructions = 0
-    print("# max address:", max_address - min_address)
-    print("# max timestamp:", (max_timestamp - min_timestamp) / 1000)
-    print("# bytes read:", bytes_read)
-    print("# bytes write:", bytes_write)
-    print(
-        f"# read requests: {round(100*count_reads / (count_reads + count_instructions + count_writes), 2)}%"
-    )
-    print(
-        f"# write requests: {round(100*count_writes / (count_reads + count_instructions + count_writes), 2)}%"
-    )
-    if not ignore_instruction_fetch:
+    with open(temporary_path, 'a') as f_tmp:
+        print("# max address:", max_address - min_address, file=f_tmp)
+        print("# max timestamp:", (max_timestamp - min_timestamp) / 1000, file=f_tmp)
+        print("# bytes read:", bytes_read, file=f_tmp)
+        print("# bytes write:", bytes_write, file=f_tmp)
         print(
-            f"# instruction fetch requests: {round(100*count_instructions / (count_reads + count_instructions + count_writes), 2)}%"
+            f"# read requests: {round(100 * count_reads / (count_reads + count_instructions + count_writes), 2)}%",
+            file=f_tmp
         )
+        print(
+            f"# write requests: {round(100 * count_writes / (count_reads + count_instructions + count_writes), 2)}%",
+            file=f_tmp
+        )
+        if not ignore_instruction_fetch:
+            print(
+                f"# instruction fetch requests: {round(100 * count_instructions / (count_reads + count_instructions + count_writes), 2)}%",
+                file=f_tmp
+            )
     cur_timestamp = None
     with open(result_path, "r") as f:
         header = [next(f) for i in range(3)]
@@ -301,7 +310,7 @@ def parse_special(
             entry[0] = (entry[0] - min_timestamp) / 1000
             entry[2] = entry[2] - min_address
             output_line = ",".join([str(v) for v in entry])
-            print(output_line)
+            print(output_line, file=f_tmp)
     if delete_logs:
         os.remove(result_path)
 
