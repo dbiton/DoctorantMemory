@@ -46,7 +46,7 @@ def invoke_drcachesim(args: list):
     return output_path
 
 
-def generate(app_path: str, app_args: list, trace_path: str, delete_logs: bool):
+def generate(app_path: str, app_args: list, trace_path: str, additional_options: str, delete_logs: bool):
     """
     Invokes an app with given arguments, writes
     the trace output to trace_path and prints it.
@@ -61,7 +61,7 @@ def generate(app_path: str, app_args: list, trace_path: str, delete_logs: bool):
     """
     Path(trace_path).mkdir(parents=True, exist_ok=True)
     result_path = invoke_drcachesim(
-        ["-offline", "-outdir", trace_path, "--", app_path] + app_args
+        additional_options.split() + ["-offline", "-outdir", trace_path, "--", app_path] + app_args
     )
     with open(result_path, "r") as f:
         for line in f:
@@ -70,7 +70,7 @@ def generate(app_path: str, app_args: list, trace_path: str, delete_logs: bool):
         os.remove(result_path)
 
 
-def parse(trace_path: str, sim_type: str, delete_logs: bool):
+def parse(trace_path: str, sim_type: str, additional_options: str, delete_logs: bool):
     """
     Parses a trace and processes it with requested tool,
     writes the results to a file and prints them.
@@ -82,7 +82,7 @@ def parse(trace_path: str, sim_type: str, delete_logs: bool):
         Returns:
             result_path (str): the path to a file containing the parse results
     """
-    result_path = invoke_drcachesim(["-indir", trace_path] + sim_type.split())
+    result_path = invoke_drcachesim(additional_options.split() + ["-indir", trace_path] + sim_type.split())
     with open(result_path, "r") as f:
         for line in f:
             print(line.strip())
@@ -345,6 +345,11 @@ def create_parser():
         help="relative or absolute to trace, which would be written to when generating and read from when parsing.",
     )
     parser.add_argument(
+        "-additional_options",
+        default="",
+        help="additional options passed directly to drcachesim",
+    )
+    parser.add_argument(
         "-keep_logs",
         action="store_true",
         help="keep files containing app output and parse results after printing them to the console",
@@ -407,9 +412,9 @@ def run():
             )
         else:
             sim_type = translate_toolname(args.parse_tool_name)
-            parse(args.trace_path, sim_type, not args.keep_logs)
+            parse(args.trace_path, sim_type, args.additional_options, not args.keep_logs)
     elif args.operation == "generate":
-        generate(args.app_path, args.app_args, args.trace_path, not args.keep_logs)
+        generate(args.app_path, args.app_args, args.trace_path, args.additional_options, not args.keep_logs)
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
 
