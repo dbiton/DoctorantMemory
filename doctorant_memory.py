@@ -24,7 +24,7 @@ def get_timestamp():
         Returns:
             timestamp (str): the current time as an iso compliant string
     """
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    timestamp = datetime.now(timezone.utc).strftime("%H:%M:%S")
     return timestamp
 
 
@@ -39,7 +39,7 @@ def invoke_drcachesim(args: list):
         Returns:
             output_path (str): the path to a file containing the invocation results
     """
-    output_path = f"DOCTORANT_MEMORY_{get_timestamp()}"
+    output_path = f"drcachesim_output_{get_timestamp()}.txt"
     output_file = open(output_path, "w")
     command = [drrun_path, "-t", "drcachesim"] + args
     subprocess.run(command, stdout=output_file, stderr=output_file)
@@ -123,7 +123,7 @@ def parse_special_get_hot_addresses(
         output_path
 ):
     digits_per_address = int(math.log10(max_address)) + 1
-    path_hot_addr = f"DOCTORANT_MEMORY_HOT_ADDRESSES_{get_timestamp()}"
+    path_hot_addr = f"hot_addresses_{get_timestamp()}.txt"
     relevant_access_types = ["write", "read"]
     if not ignore_instruction_fetch:
         relevant_access_types.append("ifetch")
@@ -235,7 +235,7 @@ def parse_special(
         Parameters:
             trace_path (str): the path the trace is at
     """
-    temporary_path = f"get_timestamp()"
+    temporary_path = f"doctorant_memory_trace_{get_timestamp()}.txt"
 
     result_path = invoke_drcachesim(["-indir", trace_path, "-simulator_type", "view"])
     (
@@ -281,36 +281,37 @@ def parse_special(
                 file=f_tmp
             )
     cur_timestamp = None
-    with open(result_path, "r") as f:
-        header = [next(f) for i in range(3)]
-        for line in f:
-            tokens = line.split()
-            if tokens[0] == "View":
-                break
-            tid = tokens[2]
-            record_details_header = tokens[3]
-            if record_details_header == "ifetch":
-                if ignore_instruction_fetch:
+    with open(temporary_path, 'a') as f_tmp:
+        with open(result_path, "r") as f:
+            header = [next(f) for i in range(3)]
+            for line in f:
+                tokens = line.split()
+                if tokens[0] == "View":
+                    break
+                tid = tokens[2]
+                record_details_header = tokens[3]
+                if record_details_header == "ifetch":
+                    if ignore_instruction_fetch:
+                        continue
+                    op = "I"  # instruction
+                elif record_details_header == "write":
+                    op = "W"
+                elif record_details_header == "read":
+                    op = "R"
+                elif record_details_header == "<marker:":
+                    if tokens[4] == "timestamp":
+                        cur_timestamp = int(tokens[5][:-1])
                     continue
-                op = "I"  # instruction
-            elif record_details_header == "write":
-                op = "W"
-            elif record_details_header == "read":
-                op = "R"
-            elif record_details_header == "<marker:":
-                if tokens[4] == "timestamp":
-                    cur_timestamp = int(tokens[5][:-1])
-                continue
-            else:
-                continue  # fix here, check other possible options
-            curr_address = int(tokens[7], 0)
-            size = tokens[4]  # should check type after?
-            assert tokens[5] == "byte(s)"
-            entry = [cur_timestamp, tid, curr_address, size, op]
-            entry[0] = (entry[0] - min_timestamp) / 1000
-            entry[2] = entry[2] - min_address
-            output_line = ",".join([str(v) for v in entry])
-            print(output_line, file=f_tmp)
+                else:
+                    continue  # fix here, check other possible options
+                curr_address = int(tokens[7], 0)
+                size = tokens[4]  # should check type after?
+                assert tokens[5] == "byte(s)"
+                entry = [cur_timestamp, tid, curr_address, size, op]
+                entry[0] = (entry[0] - min_timestamp) / 1000
+                entry[2] = entry[2] - min_address
+                output_line = ",".join([str(v) for v in entry])
+                print(output_line, file=f_tmp)
     if delete_logs:
         os.remove(result_path)
 
@@ -382,9 +383,9 @@ def create_parser():
         type=int,
     )
     parser.add_argument(
-        "-parse_cacheline_size",
+        "-parse_alignment_size",
         default=16,
-        help="the cacheline size used in memory_accesses in bytes.",
+        help="The alignment size used in memory_accesses in bytes. For example, if set to 3 an access to address 30 and address 31 would be grouped together",
         type=int,
     )
     return parser
