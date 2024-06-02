@@ -1,0 +1,25 @@
+Cache line histogram tool results:
+icache: 970 unique cache lines
+dcache: 2562 unique cache lines
+icache top 10
+    0x7f01848dcf40: 36326
+    0x7f0186272480: 14899
+    0x7f01848dcf00: 12801
+    0x7f0186270280: 10971
+    0x7f01848dcf80: 10186
+    0x7f018627dec0: 4836
+    0x7f018626f480: 3213
+    0x7f0186282540: 2988
+    0x7f018627df00: 2771
+    0x7f01862724c0: 2482
+dcache top 10
+    0x7f0184b68000: 2611
+    0x7ffc2506b180: 1905
+    0x7ffc2506b280: 1683
+    0x7ffc2506b0c0: 1640
+    0x7ffc2506b1c0: 1445
+    0x7f0184b68300: 1344
+    0x7ffc2506b140: 1228
+    0x7ffc2506b100: 1197
+    0x7ffc2506b300: 803
+    0x7ffc2506b240: 667

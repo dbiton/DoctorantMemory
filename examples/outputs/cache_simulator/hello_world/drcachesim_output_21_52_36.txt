@@ -1,0 +1,29 @@
+Cache simulation results:
+Core #0 (1 thread(s))
+  L1I0 (size=32768, assoc=8, block=64, LRU) stats:
+    Hits:                          166,433
+    Misses:                            985
+    Compulsory misses:                 970
+    Invalidations:                       0
+    Miss rate:                        0.59%
+  L1D0 (size=32768, assoc=8, block=64, LRU) stats:
+    Hits:                           48,386
+    Misses:                          1,812
+    Compulsory misses:               2,681
+    Invalidations:                       0
+    Prefetch hits:                     200
+    Prefetch misses:                 1,612
+    Miss rate:                        3.61%
+Core #1 (0 thread(s))
+Core #2 (0 thread(s))
+Core #3 (0 thread(s))
+LL (size=8388608, assoc=16, block=64, LRU) stats:
+    Hits:                              443
+    Misses:                          2,354
+    Compulsory misses:               3,648
+    Invalidations:                       0
+    Prefetch hits:                     318
+    Prefetch misses:                 1,294
+    Local miss rate:                 84.16%
+    Child hits:                    215,019
+    Total miss rate:                  1.08%
