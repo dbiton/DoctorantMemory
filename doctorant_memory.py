@@ -28,7 +28,7 @@ def get_timestamp():
     return timestamp
 
 
-def invoke_drcachesim(args: list):
+def invoke_drcachesim(args: list, folder_path = ""):
     """
     Invokes drcachesim with given arguments and writes
     the output to a file, returns the file path.
@@ -40,13 +40,17 @@ def invoke_drcachesim(args: list):
             output_path (str): the path to a file containing the invocation results
     """
     output_path = f"drcachesim_output_{get_timestamp()}.txt"
-    output_file = open(output_path, "w")
     command = [drrun_path, "-t", "drcachesim"] + args
+    if len(folder_path) > 0:
+        Path(folder_path).mkdir(parents=True, exist_ok=True)
+        command += ["-outdir", folder_path]
+        output_path = f"{folder_path}/{output_path}"
+    output_file = open(output_path, "w")
     subprocess.run(command, stdout=output_file, stderr=output_file)
     return output_path
 
 
-def generate(app_path: str, app_args: list, trace_path: str, additional_options: str, delete_logs: bool):
+def generate(app_path: str, output_path: str, app_args: list, trace_path: str, additional_options: str, delete_logs: bool):
     """
     Invokes an app with given arguments, writes
     the trace output to trace_path and prints it.
@@ -61,7 +65,8 @@ def generate(app_path: str, app_args: list, trace_path: str, additional_options:
     """
     Path(trace_path).mkdir(parents=True, exist_ok=True)
     result_path = invoke_drcachesim(
-        additional_options.split() + ["-offline", "-outdir", trace_path, "--", app_path] + app_args
+        additional_options.split() + ["-offline", "-outdir", trace_path, "--", app_path] + app_args,
+        output_path
     )
     with open(result_path, "r") as f:
         for line in f:
@@ -70,7 +75,7 @@ def generate(app_path: str, app_args: list, trace_path: str, additional_options:
         os.remove(result_path)
 
 
-def parse(trace_path: str, sim_type: str, additional_options: str, delete_logs: bool):
+def parse(trace_path: str, output_path: str, sim_type: str, additional_options: str, delete_logs: bool):
     """
     Parses a trace and processes it with requested tool,
     writes the results to a file and prints them.
@@ -82,7 +87,7 @@ def parse(trace_path: str, sim_type: str, additional_options: str, delete_logs: 
         Returns:
             result_path (str): the path to a file containing the parse results
     """
-    result_path = invoke_drcachesim(additional_options.split() + ["-indir", trace_path] + sim_type.split())
+    result_path = invoke_drcachesim(additional_options.split() + ["-indir", trace_path] + sim_type.split(), output_path)
     with open(result_path, "r") as f:
         for line in f:
             print(line.strip())
@@ -223,6 +228,7 @@ def parse_special_collect_statistics(result_path):
 
 def parse_special(
         trace_path: str,
+        output_path: str,
         delete_logs: bool,
         ignore_instruction_fetch: bool,
         hot_addresses_count: int,
@@ -236,8 +242,9 @@ def parse_special(
             trace_path (str): the path the trace is at
     """
     temporary_path = f"doctorant_memory_trace_{get_timestamp()}.txt"
-
-    result_path = invoke_drcachesim(["-indir", trace_path, "-simulator_type", "view"])
+    if len(output_path) > 0:
+        temporary_path = f"{output_path}/{temporary_path}"
+    result_path = invoke_drcachesim(["-indir", trace_path, "-simulator_type", "view"], output_path)
     (
         min_timestamp,
         max_timestamp,
@@ -354,7 +361,12 @@ def create_parser():
     parser.add_argument(
         "-trace_path",
         default=".",
-        help="relative or absolute to trace, which would be written to when generating and read from when parsing.",
+        help="relative or absolute to trace, which would be read from when parsing.",
+    )
+    parser.add_argument(
+        "-output_path",
+        default=".",
+        help="relative or absolute to a folder which would be created if needed, to which we will write the output.",
     )
     parser.add_argument(
         "-additional_options",
@@ -417,6 +429,7 @@ def run():
         if args.parse_tool_name == "memory_accesses":
             parse_special(
                 args.trace_path,
+                args.output_path,
                 not args.keep_logs,
                 args.parse_ignore_inst,
                 args.parse_hot_addresses_count,
@@ -424,9 +437,9 @@ def run():
             )
         else:
             sim_type = translate_toolname(args.parse_tool_name)
-            parse(args.trace_path, sim_type, args.additional_options, not args.keep_logs)
+            parse(args.trace_path, args.output_path, sim_type, args.additional_options, not args.keep_logs)
     elif args.operation == "generate":
-        generate(args.app_path, args.app_args, args.trace_path, args.additional_options, not args.keep_logs)
+        generate(args.app_path, args.output_path, args.app_args, args.trace_path, args.additional_options, not args.keep_logs)
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
 
