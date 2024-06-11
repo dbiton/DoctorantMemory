@@ -311,7 +311,9 @@ def parse_special(
                 entry[0] = (entry[0] - min_timestamp) / 1000
                 entry[2] = entry[2] - min_address
                 output_line = ",".join([str(v) for v in entry])
-                print(output_line, file=f_tmp)
+                if not delete_logs:
+                  print(output_line, file=f_tmp)
+                print(output_line)
     if delete_logs:
         os.remove(result_path)
 
@@ -418,7 +420,7 @@ def run():
                 not args.keep_logs,
                 args.parse_ignore_inst,
                 args.parse_hot_addresses_count,
-                args.parse_cacheline_size,
+                args.parse_alignment_size,
             )
         else:
             sim_type = translate_toolname(args.parse_tool_name)
