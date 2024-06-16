@@ -50,7 +50,7 @@ def invoke_drcachesim(args: list, folder_path = ""):
     return output_path
 
 
-def generate(app_path: str, output_path: str, app_args: list, trace_path: str, additional_options: str, delete_logs: bool):
+def generate(app_path: str, output_path: str, app_args: list, trace_path: str, additional_options: str):
     """
     Invokes an app with given arguments, writes
     the trace output to trace_path and prints it.
@@ -68,14 +68,9 @@ def generate(app_path: str, output_path: str, app_args: list, trace_path: str, a
         additional_options.split() + ["-offline", "-outdir", trace_path, "--", app_path] + app_args,
         output_path
     )
-    with open(result_path, "r") as f:
-        for line in f:
-            print(line.strip())
-    if delete_logs:
-        os.remove(result_path)
 
 
-def parse(trace_path: str, output_path: str, sim_type: str, additional_options: str, delete_logs: bool):
+def parse(trace_path: str, output_path: str, sim_type: str, additional_options: str):
     """
     Parses a trace and processes it with requested tool,
     writes the results to a file and prints them.
@@ -88,11 +83,6 @@ def parse(trace_path: str, output_path: str, sim_type: str, additional_options: 
             result_path (str): the path to a file containing the parse results
     """
     result_path = invoke_drcachesim(additional_options.split() + ["-indir", trace_path] + sim_type.split(), output_path)
-    with open(result_path, "r") as f:
-        for line in f:
-            print(line.strip())
-    if delete_logs:
-        os.remove(result_path)
 
 
 # wouldn't work in windows
@@ -123,7 +113,6 @@ def parse_special_get_hot_addresses(
         max_address,
         result_path,
         max_count_addresses_print,
-        delete_logs,
         ignore_instruction_fetch,
         output_path
 ):
@@ -174,8 +163,6 @@ def parse_special_get_hot_addresses(
                 count_addresses_printed += 1
                 if count_addresses_printed >= max_count_addresses_print:
                     break
-    if delete_logs:
-        os.remove(path_hot_addr)
 
 
 def parse_special_collect_statistics(result_path):
@@ -229,7 +216,6 @@ def parse_special_collect_statistics(result_path):
 def parse_special(
         trace_path: str,
         output_path: str,
-        delete_logs: bool,
         ignore_instruction_fetch: bool,
         hot_addresses_count: int,
         cacheline_size_bytes: int,
@@ -262,7 +248,6 @@ def parse_special(
         max_address,
         result_path,
         hot_addresses_count,
-        delete_logs,
         ignore_instruction_fetch,
         temporary_path
     )
@@ -318,11 +303,7 @@ def parse_special(
                 entry[0] = (entry[0] - min_timestamp) / 1000
                 entry[2] = entry[2] - min_address
                 output_line = ",".join([str(v) for v in entry])
-                if not delete_logs:
-                  print(output_line, file=f_tmp)
-                print(output_line)
-    if delete_logs:
-        os.remove(result_path)
+                print(output_line, file=f_tmp)
 
 
 def create_parser():
@@ -372,11 +353,6 @@ def create_parser():
         "-additional_options",
         default="",
         help="additional options passed directly to drcachesim",
-    )
-    parser.add_argument(
-        "-keep_logs",
-        action="store_true",
-        help="keep files containing app output and parse results after printing them to the console",
     )
     parser.add_argument(
         "-parse_ignore_inst",
@@ -430,16 +406,15 @@ def run():
             parse_special(
                 args.trace_path,
                 args.output_path,
-                not args.keep_logs,
                 args.parse_ignore_inst,
                 args.parse_hot_addresses_count,
                 args.parse_alignment_size,
             )
         else:
             sim_type = translate_toolname(args.parse_tool_name)
-            parse(args.trace_path, args.output_path, sim_type, args.additional_options, not args.keep_logs)
+            parse(args.trace_path, args.output_path, sim_type, args.additional_options)
     elif args.operation == "generate":
-        generate(args.app_path, args.output_path, args.app_args, args.trace_path, args.additional_options, not args.keep_logs)
+        generate(args.app_path, args.output_path, args.app_args, args.trace_path, args.additional_options)
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
 
