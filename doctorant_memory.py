@@ -113,18 +113,21 @@ def count_unique_in_sorted_file_in_place(path_file):
 def parse_special_get_hot_addresses(
         bytes_per_address,
         max_address,
-        result_path,
+        unparsed_trace_path,
         max_count_addresses_print,
         ignore_instruction_fetch,
-        output_path
+        result_path,
+        output_folder_path
 ):
     digits_per_address = int(math.log10(max_address)) + 1
     path_hot_addr = f"hot_addresses_{get_timestamp()}.txt"
+    if len(output_folder_path) > 0:
+        path_hot_addr = os.path.join(output_folder_path, path_hot_addr)
     relevant_access_types = ["write", "read"]
     if not ignore_instruction_fetch:
         relevant_access_types.append("ifetch")
     with open(path_hot_addr, "w") as f_hot_addr:
-        with open(result_path, "r") as f_mem_access:
+        with open(unparsed_trace_path, "r") as f_mem_access:
             header = [next(f_mem_access) for i in range(3)]
             for line in f_mem_access:
                 tokens = line.split()
@@ -154,7 +157,7 @@ def parse_special_get_hot_addresses(
     count_unique_in_sorted_file_in_place(path_hot_addr)
     # sort by number of accesses
     sort_file_in_place(path_hot_addr, True)
-    with open(output_path, 'a') as file_out:
+    with open(result_path, 'a') as file_out:
         print(f"# cacheline size: {bytes_per_address}", file=file_out)
         print(f"# hot addresses count: {max_count_addresses_print}", file=file_out)
         print("# hot addresses (accesses | address):", file=file_out)
@@ -218,7 +221,7 @@ def parse_special_collect_statistics(result_path):
 
 def parse_special(
         trace_path: str,
-        output_path: str,
+        output_folder_path: str,
         ignore_instruction_fetch: bool,
         hot_addresses_count: int,
         cacheline_size_bytes: int,
@@ -231,9 +234,9 @@ def parse_special(
             trace_path (str): the path the trace is at
     """
     result_path = f"doctorant_memory_trace_{get_timestamp()}.txt"
-    if len(output_path) > 0:
-        result_path = f"{output_path}/{result_path}"
-    unparsed_trace_path = invoke_drcachesim(["-indir", trace_path, "-simulator_type", "view"], output_path)
+    if len(output_folder_path) > 0:
+        result_path = os.path.join(output_folder_path, result_path)
+    unparsed_trace_path = invoke_drcachesim(["-indir", trace_path, "-simulator_type", "view"], output_folder_path)
     (
         min_timestamp,
         max_timestamp,
@@ -252,7 +255,8 @@ def parse_special(
         unparsed_trace_path,
         hot_addresses_count,
         ignore_instruction_fetch,
-        result_path
+        result_path,
+        output_folder_path
     )
 
     if ignore_instruction_fetch:
