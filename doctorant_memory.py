@@ -68,6 +68,7 @@ def generate(app_path: str, output_path: str, app_args: list, trace_path: str, a
         additional_options.split() + ["-offline", "-outdir", trace_path, "--", app_path] + app_args,
         output_path
     )
+    return result_path
 
 
 def parse(trace_path: str, output_path: str, sim_type: str, additional_options: str):
@@ -83,6 +84,7 @@ def parse(trace_path: str, output_path: str, sim_type: str, additional_options: 
             result_path (str): the path to a file containing the parse results
     """
     result_path = invoke_drcachesim(additional_options.split() + ["-indir", trace_path] + sim_type.split(), output_path)
+    return result_path
 
 
 # wouldn't work in windows
@@ -163,6 +165,7 @@ def parse_special_get_hot_addresses(
                 count_addresses_printed += 1
                 if count_addresses_printed >= max_count_addresses_print:
                     break
+    return path_hot_addr
 
 
 def parse_special_collect_statistics(result_path):
@@ -227,10 +230,10 @@ def parse_special(
         Parameters:
             trace_path (str): the path the trace is at
     """
-    temporary_path = f"doctorant_memory_trace_{get_timestamp()}.txt"
+    result_path = f"doctorant_memory_trace_{get_timestamp()}.txt"
     if len(output_path) > 0:
-        temporary_path = f"{output_path}/{temporary_path}"
-    result_path = invoke_drcachesim(["-indir", trace_path, "-simulator_type", "view"], output_path)
+        result_path = f"{output_path}/{result_path}"
+    unparsed_trace_path = invoke_drcachesim(["-indir", trace_path, "-simulator_type", "view"], output_path)
     (
         min_timestamp,
         max_timestamp,
@@ -241,20 +244,20 @@ def parse_special(
         count_reads,
         count_writes,
         count_instructions,
-    ) = parse_special_collect_statistics(result_path)
+    ) = parse_special_collect_statistics(unparsed_trace_path)
 
-    parse_special_get_hot_addresses(
+    hot_addresses_path = parse_special_get_hot_addresses(
         cacheline_size_bytes,
         max_address,
-        result_path,
+        unparsed_trace_path,
         hot_addresses_count,
         ignore_instruction_fetch,
-        temporary_path
+        result_path
     )
 
     if ignore_instruction_fetch:
         count_instructions = 0
-    with open(temporary_path, 'a') as f_tmp:
+    with open(result_path, 'a') as f_tmp:
         print("# max address:", max_address - min_address, file=f_tmp)
         print("# max timestamp:", (max_timestamp - min_timestamp) / 1000, file=f_tmp)
         print("# bytes read:", bytes_read, file=f_tmp)
@@ -273,8 +276,8 @@ def parse_special(
                 file=f_tmp
             )
     cur_timestamp = None
-    with open(temporary_path, 'a') as f_tmp:
-        with open(result_path, "r") as f:
+    with open(result_path, 'a') as f_tmp:
+        with open(unparsed_trace_path, "r") as f:
             header = [next(f) for i in range(3)]
             for line in f:
                 tokens = line.split()
@@ -304,6 +307,7 @@ def parse_special(
                 entry[2] = entry[2] - min_address
                 output_line = ",".join([str(v) for v in entry])
                 print(output_line, file=f_tmp)
+    return hot_addresses_path, unparsed_trace_path, result_path
 
 
 def create_parser():
@@ -403,18 +407,21 @@ def run():
     args = parser.parse_args()
     if args.operation == "parse":
         if args.parse_tool_name == "memory_accesses":
-            parse_special(
+            hot_addresses_path, unparsed_trace_path, result_path = parse_special(
                 args.trace_path,
                 args.output_path,
                 args.parse_ignore_inst,
                 args.parse_hot_addresses_count,
                 args.parse_alignment_size,
             )
+            print(hot_addresses_path, unparsed_trace_path, result_path)
         else:
             sim_type = translate_toolname(args.parse_tool_name)
-            parse(args.trace_path, args.output_path, sim_type, args.additional_options)
+            result_path = parse(args.trace_path, args.output_path, sim_type, args.additional_options)
+            print(result_path)
     elif args.operation == "generate":
-        generate(args.app_path, args.output_path, args.app_args, args.trace_path, args.additional_options)
+        result_path = generate(args.app_path, args.output_path, args.app_args, args.trace_path, args.additional_options)
+        print(result_path)
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
 
