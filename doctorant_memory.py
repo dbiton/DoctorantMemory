@@ -43,7 +43,7 @@ def invoke_drcachesim(args: list, folder_path = ""):
     command = [drrun_path, "-t", "drcachesim"] + args
     if len(folder_path) > 0:
         Path(folder_path).mkdir(parents=True, exist_ok=True)
-        command += ["-outdir", folder_path]
+        command = [drrun_path, "-t", "drcachesim"] + ["-outdir", folder_path] + args
         output_path = f"{folder_path}/{output_path}"
     output_file = open(output_path, "w")
     subprocess.run(command, stdout=output_file, stderr=output_file)
