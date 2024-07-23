@@ -225,6 +225,7 @@ def parse_special(
         ignore_instruction_fetch: bool,
         hot_addresses_count: int,
         cacheline_size_bytes: int,
+        additional_options: str
 ):
     """
     Parses a trace and processes it to doctorant's simulator format,
@@ -236,7 +237,7 @@ def parse_special(
     result_path = f"doctorant_memory_trace_{get_timestamp()}.txt"
     if len(output_folder_path) > 0:
         result_path = os.path.join(output_folder_path, result_path)
-    unparsed_trace_path = invoke_drcachesim(["-indir", trace_path, "-simulator_type", "view"], output_folder_path)
+    unparsed_trace_path = invoke_drcachesim(additional_options.split() + ["-indir", trace_path, "-simulator_type", "view"], output_folder_path)
     (
         min_timestamp,
         max_timestamp,
@@ -417,6 +418,7 @@ def run():
                 args.parse_ignore_inst,
                 args.parse_hot_addresses_count,
                 args.parse_alignment_size,
+                args.additional_options
             )
             print(hot_addresses_path, unparsed_trace_path, result_path)
         else:
